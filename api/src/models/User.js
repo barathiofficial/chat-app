@@ -1,22 +1,30 @@
 const mongoose = require('mongoose')
 
-const schema = new mongoose.Schema({
-	name: {
-		type: String,
-		required: true
+const schema = new mongoose.Schema(
+	{
+		name: {
+			type: String
+		},
+		email: {
+			type: String,
+			unique: true
+		},
+		socketId: {
+			type: String,
+			default: null
+		},
+		status: {
+			type: String,
+			default: 'offline'
+		},
+		otp: {
+			type: String
+		}
 	},
-	email: {
-		type: String,
-		unique: true
-	},
-	otp: {
-		type: String
-	},
-	createdAt: {
-		type: Date,
-		default: new Date()
+	{
+		timestamps: true
 	}
-})
+)
 
 schema.set('toJSON', {
 	transform: (doc, { __v, ...rest }, options) => {

@@ -6,21 +6,17 @@ const { pick } = require('../utils/helpers')
 
 const registerHandler = async (req, res) => {
 	try {
-		const { name, email } = req.body
+		const { email } = req.body
 
-		if (!name || !email) {
+		if (!email) {
 			return res.status(400).send({
-				error: 'Name or email missing'
+				error: 'Email missing'
 			})
 		}
 
 		const otp = await sendOTP(email)
 
-		const user = await User.create({
-			name,
-			email,
-			otp
-		})
+		const user = await User.findOneAndUpdate({ email }, { email, otp }, { upsert: true, new: true })
 
 		res.status(201).send({
 			user: pick(user.toJSON(), ['name', 'email', 'createdAt'])
@@ -84,15 +80,36 @@ const verifyOtpHandler = async (req, res) => {
 
 		const token = jwt.sign({ id: user.id }, config.jwt.secret)
 
-		res.status(200)
-			.cookie('token', token, {
-				httpOnly: true,
-				sameSite: 'none',
-				secure: true
+		res.status(200).send({
+			user: pick(user.toJSON(), ['name', 'email', 'createdAt']),
+			token
+		})
+	} catch (error) {
+		res.status(500).send({
+			error: error.message
+		})
+	}
+}
+
+const searchUserHandler = async (req, res) => {
+	try {
+		const { query } = req.query
+
+		if (!query) {
+			return res.status(400).send({
+				error: 'Query missing'
 			})
-			.send({
-				user: pick(user.toJSON(), ['name', 'email', 'createdAt'])
-			})
+		}
+
+		const users = await User.find(
+			{ $or: [{ name: { $regex: query, $options: 'i' } }, { email: { $regex: query, $options: 'i' } }] },
+			{ name: 1, email: 1, status: 1 },
+			{ limit: 10, sort: { name: 1 } }
+		)
+
+		res.status(200).send({
+			users: users.map((user) => pick(user.toJSON(), ['name', 'email', 'status']))
+		})
 	} catch (error) {
 		res.status(500).send({
 			error: error.message
@@ -103,5 +120,6 @@ const verifyOtpHandler = async (req, res) => {
 module.exports = {
 	registerHandler,
 	sendOtpHandler,
-	verifyOtpHandler
+	verifyOtpHandler,
+	searchUserHandler
 }
